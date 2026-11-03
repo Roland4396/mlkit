@@ -1,0 +1,47 @@
+name: Publish ML Kit GenAI Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: Roland4396/mlkit
+      RELEASE_TAG: genai-demo-20261103
+    steps:
+      - name: Download and verify existing build
+        run: |
+          gh api repos/Roland4396/mlkit/actions/artifacts/13201882387/zip > MLKit-GenAI-debug.zip
+          echo 'd7a79027452e0e9e2e5b476be16c881b0f89677e07a488573d55768a05f8ee84  MLKit-GenAI-debug.zip' | sha256sum -c -
+          unzip -q MLKit-GenAI-debug.zip -d dist
+          cd dist
+          sha256sum -c SHA256SUMS
+
+      - name: Publish installable APK and compressed package
+        run: |
+          gh release create "$RELEASE_TAG" \
+            --target 5dce399a7b59203e2d781a81c0d362e74042a90a \
+            --title 'ML Kit GenAI Demo · 2026-11-03' \
+            --draft \
+            --notes 'Google 官方 ML Kit GenAI Android Demo，版本 1.0（Debug）。
+
+          - 直接安装：MLKit-GenAI-debug.apk，90.96 MB。
+          - 压缩包：MLKit-GenAI-debug.zip，27.89 MB，解压后安装 APK。
+          - 功能：图片描述、润色、改写、摘要、自定义多模态 Prompt、Embedding、Agent。
+          - 系统：Android 12 及以上；模型功能通过 Google AICore 提供，按设备与测试账号开通情况使用。
+          - 已验证：编译成功、APK 签名验证、SHA256 校验。
+
+          构建：https://github.com/Roland4396/mlkit/actions/runs/41572089606' \
+            dist/MLKit-GenAI-debug.apk \
+            MLKit-GenAI-debug.zip \
+            dist/SHA256SUMS \
+            dist/source-commit.txt
+          gh release edit "$RELEASE_TAG" --draft=false --latest
+          gh release view "$RELEASE_TAG" --json url --jq .url >> "$GITHUB_STEP_SUMMARY"
